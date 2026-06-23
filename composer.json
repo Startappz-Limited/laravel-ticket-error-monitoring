@@ -1,0 +1,40 @@
+{
+    "name": "our-ticketing/error-monitor",
+    "description": "Laravel SDK that captures exceptions, queue failures and diagnostics and ships them to the TicketGo Application Monitoring platform.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "monitoring", "crash-analytics", "error-tracking", "ticketgo"],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/http": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "OurTicketing\\ErrorMonitor\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "OurTicketing\\ErrorMonitor\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "OurTicketing\\ErrorMonitor\\ErrorMonitorServiceProvider"
+            ],
+            "aliases": {
+                "Monitor": "OurTicketing\\ErrorMonitor\\Facades\\Monitor"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
