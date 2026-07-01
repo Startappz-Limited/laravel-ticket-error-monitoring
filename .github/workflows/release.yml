@@ -1,0 +1,92 @@
+name: Release
+
+# Replaces the manual "git tag vX.Y.Z && git push --tags" flow.
+# Go to the Actions tab -> Release -> "Run workflow", pick the bump level.
+# It runs the tests, computes the next semver tag, pushes it, and publishes
+# a GitHub Release with auto-generated notes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump (ignored if an explicit version is given)'
+        type: choice
+        required: true
+        default: patch
+        options: [patch, minor, major]
+      version:
+        description: 'Explicit version, e.g. 1.4.0 (overrides bump)'
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run tests (gate the release)
+        run: vendor/bin/phpunit
+
+      - name: Compute next version
+        id: version
+        run: |
+          set -euo pipefail
+          explicit="${{ github.event.inputs.version }}"
+          if [ -n "$explicit" ]; then
+            next="${explicit#v}"
+          else
+            latest="$(git tag --list 'v*' --sort=-v:refname | head -n1)"
+            latest="${latest#v}"
+            [ -z "$latest" ] && latest="0.0.0"
+            IFS='.' read -r major minor patch <<< "$latest"
+            case "${{ github.event.inputs.bump }}" in
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              patch) patch=$((patch + 1)) ;;
+            esac
+            next="${major}.${minor}.${patch}"
+          fi
+          echo "tag=v${next}" >> "$GITHUB_OUTPUT"
+          echo "Next tag: v${next}"
+
+      - name: Fail if tag already exists
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists"
+            exit 1
+          fi
+
+      - name: Create and push tag
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes
