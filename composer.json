@@ -3,7 +3,6 @@
     "description": "Laravel SDK that captures exceptions, queue failures and diagnostics and ships them to the TicketGo Application Monitoring platform.",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.0",
     "keywords": ["laravel", "monitoring", "crash-analytics", "error-tracking", "ticketgo"],
     "require": {
         "php": "^8.2",
