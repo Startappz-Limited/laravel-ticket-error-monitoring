@@ -51,6 +51,39 @@ class Sanitizer
     }
 
     /**
+     * Redact secrets from a free-text string (exception message, stack trace)
+     * before it leaves the host app.
+     *
+     * Array-based context is scrubbed by key via clean(); messages are opaque
+     * strings, so PDO/QueryException connection details (Host, Port, Database,
+     * credentials) and DSN passwords must be stripped by pattern instead.
+     */
+    public function cleanText(?string $text): ?string
+    {
+        if ($text === null || $text === '') {
+            return $text;
+        }
+
+        // "key: value" / "key=value" connection pairs, e.g. the tail of a
+        // QueryException: "(Connection: mysql, Host: 1.2.3.4, Port: 3306,
+        // Database: app, ...)" or a PDO DSN "host=...;port=...;dbname=...".
+        $text = preg_replace(
+            '/\b(hostname|host|server|port|database|dbname|db|username|user|uid|password|passwd|pwd)(\s*[:=]\s*)[^\s,;)"\']+/i',
+            '$1$2'.self::REDACTED,
+            $text
+        ) ?? $text;
+
+        // Credentials embedded in DSN / URL connection strings: scheme://user:pass@host.
+        $text = preg_replace(
+            '#([a-z][a-z0-9+.\-]*://)[^:@\s/]+(?::[^@\s/]+)?@#i',
+            '$1'.self::REDACTED.'@',
+            $text
+        ) ?? $text;
+
+        return $this->obfuscatePii($text);
+    }
+
+    /**
      * Match a key against the configured denylist.
      */
     private function isSensitive(string $key): bool
