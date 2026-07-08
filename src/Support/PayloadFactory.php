@@ -68,10 +68,10 @@ class PayloadFactory
 
         return [
             'exception_class' => $class,
-            'message' => $message,
+            'message' => $this->sanitizer->cleanText($message),
             'severity' => $severity,
             'environment' => $this->config['environment'] ?? 'production',
-            'stack_trace' => $stackTrace,
+            'stack_trace' => $this->sanitizer->cleanText($stackTrace),
             'timestamp' => now()->toIso8601String(),
             'http_context' => $this->httpContext(),
             'request_payload' => $this->requestPayload(),
